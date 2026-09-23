@@ -3,26 +3,53 @@ import { useState } from "react";
 function Contact() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !message) {
+    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
       alert("Please fill all fields");
       return;
     }
 
-    if (!email.includes("@") || !email.includes(".")) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       alert("Please enter a valid email");
       return;
     }
 
-    alert("Thank you for contacting HopeTogether!");
+    try {
+      const response = await fetch("http://localhost:5000/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          subject: subject.trim(),
+          message: message.trim()
+        })
+      });
 
-    setName("");
-    setEmail("");
-    setMessage("");
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Failed to submit message");
+        return;
+      }
+
+      alert("Thank you for contacting HopeTogether!");
+
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
+    } catch (error) {
+      console.error(error);
+      alert("Could not connect to the server");
+    }
   };
 
   return (
@@ -93,6 +120,15 @@ function Contact() {
             placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <label>Subject</label>
+
+          <input
+            type="text"
+            placeholder="Enter subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
           />
 
           <label>Message</label>
