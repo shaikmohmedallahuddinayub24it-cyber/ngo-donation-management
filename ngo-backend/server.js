@@ -1,250 +1,324 @@
-require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
-
-const Donation = require("./models/Donation");
 
 const app = express();
 
-// Use Render's PORT in deployment.
-// Use 5000 when running locally.
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ================================
+// MIDDLEWARE
+// ================================
+
 app.use(cors());
 app.use(express.json());
 
 
-// ===============================
-// HOME ROUTE
-// ===============================
+// ================================
+// TEMPORARY DATABASE
+// ================================
+// This stores donations in memory.
+// IMPORTANT: Data will disappear when
+// the server restarts.
+//
+// Later we can replace this with
+// MongoDB / MySQL / PostgreSQL.
+
+let donations = [];
+
+
+// ================================
+// HOME / SERVER TEST
+// ================================
 
 app.get("/", (req, res) => {
-  res.json({
-    message: "NGO API is running"
+  res.status(200).json({
+    success: true,
+    message: "NGO Backend API is running successfully",
   });
 });
 
 
-// ===============================
-// CREATE DONATION
-// POST /api/donations
-// ===============================
-
-app.post("/api/donations", async (req, res) => {
-  try {
-    console.log("Donation request received:", req.body);
-
-    const {
-      name,
-      email,
-      amount,
-      campaign
-    } = req.body;
-
-    // Validate required fields
-    if (!name || !email || !amount || !campaign) {
-      return res.status(400).json({
-        message: "All donation fields are required"
-      });
-    }
-
-    // Create donation
-    const donation = new Donation({
-      name: name.trim(),
-      email: email.trim(),
-      amount: Number(amount),
-      campaign: campaign.trim()
-    });
-
-    // Save to MongoDB
-    const savedDonation = await donation.save();
-
-    console.log("Donation saved successfully!");
-
-    res.status(201).json({
-      message: "Donation saved successfully",
-      donation: savedDonation
-    });
-
-  } catch (error) {
-    console.error("DONATION ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to save donation",
-      error: error.message
-    });
-  }
-});
-
-
-// ===============================
+// ================================
 // GET ALL DONATIONS
-// GET /api/donations
-// ===============================
+// ================================
 
-app.get("/api/donations", async (req, res) => {
-  try {
-    const donations = await Donation.find().sort({
-      createdAt: -1
-    });
-
-    res.json(donations);
-
-  } catch (error) {
-    console.error("GET DONATIONS ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to get donations",
-      error: error.message
-    });
-  }
+app.get("/api/donations", (req, res) => {
+  res.status(200).json({
+    success: true,
+    donations: donations,
+  });
 });
 
 
-// ===============================
+// ================================
+// GET SINGLE DONATION
+// ================================
+
+app.get("/api/donations/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  const donation = donations.find(
+    (item) => item.id === id
+  );
+
+  if (!donation) {
+    return res.status(404).json({
+      success: false,
+      message: "Donation not found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    donation: donation,
+  });
+});
+
+
+// ================================
+// CREATE DONATION
+// ================================
+
+app.post("/api/donations", (req, res) => {
+  const {
+    name,
+    email,
+    amount,
+    campaign,
+  } = req.body;
+
+  // ----------------------------
+  // Validation
+  // ----------------------------
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Name is required",
+    });
+  }
+
+  if (!email || !email.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Email is required",
+    });
+  }
+
+  if (!campaign || !campaign.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Campaign is required",
+    });
+  }
+
+  if (
+    amount === undefined ||
+    amount === null ||
+    amount === ""
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Donation amount is required",
+    });
+  }
+
+  const donationAmount = Number(amount);
+
+  if (Number.isNaN(donationAmount)) {
+    return res.status(400).json({
+      success: false,
+      message: "Donation amount must be a number",
+    });
+  }
+
+  if (donationAmount < 100) {
+    return res.status(400).json({
+      success: false,
+      message: "Minimum donation amount is ₹100",
+    });
+  }
+
+  // ----------------------------
+  // Create donation
+  // ----------------------------
+
+  const newDonation = {
+    id:
+      donations.length > 0
+        ? donations[donations.length - 1].id + 1
+        : 1,
+
+    name: name.trim(),
+
+    email: email.trim(),
+
+    amount: donationAmount,
+
+    campaign: campaign.trim(),
+
+    date: new Date().toISOString(),
+  };
+
+  donations.push(newDonation);
+
+  console.log("--------------------------------");
+  console.log("NEW DONATION");
+  console.log(newDonation);
+  console.log("--------------------------------");
+
+  // ----------------------------
+  // Send response
+  // ----------------------------
+
+  res.status(201).json({
+    success: true,
+    message: "Donation successful",
+    donation: newDonation,
+  });
+});
+
+
+// ================================
 // UPDATE DONATION
-// PUT /api/donations/:id
-// ===============================
+// ================================
 
-app.put("/api/donations/:id", async (req, res) => {
-  try {
-    const {
-      name,
-      email,
-      amount,
-      campaign
-    } = req.body;
+app.put("/api/donations/:id", (req, res) => {
+  const id = Number(req.params.id);
 
-    // Validate required fields
-    if (!name || !email || !amount || !campaign) {
+  const donationIndex = donations.findIndex(
+    (item) => item.id === id
+  );
+
+  if (donationIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: "Donation not found",
+    });
+  }
+
+  const {
+    name,
+    email,
+    amount,
+    campaign,
+  } = req.body;
+
+  const existingDonation =
+    donations[donationIndex];
+
+  // Only update values that were provided
+
+  if (name !== undefined) {
+    existingDonation.name = name.trim();
+  }
+
+  if (email !== undefined) {
+    existingDonation.email = email.trim();
+  }
+
+  if (campaign !== undefined) {
+    existingDonation.campaign = campaign.trim();
+  }
+
+  if (amount !== undefined) {
+    const updatedAmount = Number(amount);
+
+    if (
+      Number.isNaN(updatedAmount) ||
+      updatedAmount < 100
+    ) {
       return res.status(400).json({
-        message: "All donation fields are required"
+        success: false,
+        message:
+          "Donation amount must be at least ₹100",
       });
     }
 
-    // Update donation
-    const updatedDonation =
-      await Donation.findByIdAndUpdate(
-        req.params.id,
-        {
-          name: name.trim(),
-          email: email.trim(),
-          amount: Number(amount),
-          campaign: campaign.trim()
-        },
-        {
-          new: true,
-          runValidators: true
-        }
-      );
-
-    // Donation not found
-    if (!updatedDonation) {
-      return res.status(404).json({
-        message: "Donation not found"
-      });
-    }
-
-    console.log("Donation updated successfully!");
-
-    res.json({
-      message: "Donation updated successfully",
-      donation: updatedDonation
-    });
-
-  } catch (error) {
-    console.error("UPDATE DONATION ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to update donation",
-      error: error.message
-    });
+    existingDonation.amount = updatedAmount;
   }
+
+  existingDonation.updatedAt =
+    new Date().toISOString();
+
+  res.status(200).json({
+    success: true,
+    message: "Donation updated successfully",
+    donation: existingDonation,
+  });
 });
 
 
-// ===============================
+// ================================
 // DELETE DONATION
-// DELETE /api/donations/:id
-// ===============================
+// ================================
 
-app.delete("/api/donations/:id", async (req, res) => {
-  try {
-    // Delete donation
-    const deletedDonation =
-      await Donation.findByIdAndDelete(
-        req.params.id
-      );
+app.delete("/api/donations/:id", (req, res) => {
+  const id = Number(req.params.id);
 
-    // Donation not found
-    if (!deletedDonation) {
-      return res.status(404).json({
-        message: "Donation not found"
-      });
-    }
+  const donationIndex = donations.findIndex(
+    (item) => item.id === id
+  );
 
-    console.log("Donation deleted successfully!");
-
-    res.json({
-      message: "Donation deleted successfully"
-    });
-
-  } catch (error) {
-    console.error("DELETE DONATION ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to delete donation",
-      error: error.message
+  if (donationIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: "Donation not found",
     });
   }
+
+  const deletedDonation =
+    donations.splice(donationIndex, 1)[0];
+
+  res.status(200).json({
+    success: true,
+    message: "Donation deleted successfully",
+    donation: deletedDonation,
+  });
 });
 
 
-// ===============================
+// ================================
+// 404 ROUTE
+// ================================
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API route not found",
+    path: req.originalUrl,
+  });
+});
+
+
+// ================================
+// ERROR HANDLER
+// ================================
+
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+  });
+});
+
+
+// ================================
 // START SERVER
-// ===============================
+// ================================
 
-async function startServer() {
-  try {
-    // Check MongoDB URI
-    if (!process.env.MONGO_URI) {
-      throw new Error(
-        "MONGO_URI is missing from .env file"
-      );
-    }
-
-    console.log("Connecting to MongoDB...");
-
-    // Connect to MongoDB Atlas
-    await mongoose.connect(
-      process.env.MONGO_URI
-    );
-
-    console.log(
-      "MongoDB connected successfully"
-    );
-
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(
-        `Server running on http://localhost:${PORT}`
-      );
-    });
-
-  } catch (error) {
-    console.error(
-      "MongoDB connection failed:"
-    );
-
-    console.error(error.message);
-
-    process.exit(1);
-  }
-}
-
-
-// Start application
-startServer();
+app.listen(PORT, () => {
+  console.log("");
+  console.log("=================================");
+  console.log(" NGO BACKEND SERVER");
+  console.log("=================================");
+  console.log(` Server running on port: ${PORT}`);
+  console.log(` Local URL: http://localhost:${PORT}`);
+  console.log(
+    ` Donations API: http://localhost:${PORT}/api/donations`
+  );
+  console.log("=================================");
+  console.log("");
+});
