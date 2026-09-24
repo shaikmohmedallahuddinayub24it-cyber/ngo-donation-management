@@ -8,10 +8,10 @@ function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       alert("Please fill all fields");
       return;
     }
@@ -26,15 +26,40 @@ function Login() {
       return;
     }
 
-    alert("Login successful!");
-    navigate("/");
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
+
+      alert("Login successful!");
+
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+      alert("Could not connect to the server");
+    }
   };
 
   return (
     <div className="form-page">
-
       <form className="form-box" onSubmit={handleLogin}>
-
         <h1>Welcome Back</h1>
 
         <p>Login to continue making a difference.</p>
@@ -51,7 +76,6 @@ function Login() {
         <label>Password</label>
 
         <div className="password-box">
-
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
@@ -78,7 +102,6 @@ function Login() {
               </svg>
             )}
           </button>
-
         </div>
 
         <button type="submit" className="main-btn">
@@ -89,9 +112,7 @@ function Login() {
           Don't have an account?{" "}
           <Link to="/signup">Create Account</Link>
         </p>
-
       </form>
-
     </div>
   );
 }

@@ -19,7 +19,7 @@ function DonorHistory() {
   const getDonations = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/donations"
+        `${import.meta.env.VITE_API_URL}/api/donations`
       );
 
       const data = await response.json();
@@ -88,7 +88,7 @@ function DonorHistory() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/donations/${editingDonation._id}`,
+        `${import.meta.env.VITE_API_URL}/api/donations/${editingDonation._id}`,
         {
           method: "PUT",
           headers: {
@@ -135,7 +135,7 @@ function DonorHistory() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/donations/${id}`,
+        `${import.meta.env.VITE_API_URL}/api/donations/${id}`,
         {
           method: "DELETE"
         }
@@ -159,10 +159,6 @@ function DonorHistory() {
   return (
     <div className="page">
 
-      {/* ===============================
-          PAGE HEADING
-      =============================== */}
-
       <div className="campaign-head">
         <p className="quote">
           "Every contribution creates a little more hope."
@@ -174,10 +170,6 @@ function DonorHistory() {
           View the donations made through HopeTogether.
         </p>
       </div>
-
-      {/* ===============================
-          EDIT FORM
-      =============================== */}
 
       {editingDonation && (
         <div className="form-page">
@@ -292,10 +284,6 @@ function DonorHistory() {
         </div>
       )}
 
-      {/* ===============================
-          DONATION TABLE
-      =============================== */}
-
       {loading ? (
         <p>Loading donations...</p>
       ) : donations.length === 0 ? (
@@ -321,21 +309,13 @@ function DonorHistory() {
               {donations.map((donation) => (
                 <tr key={donation._id}>
 
-                  <td>
-                    {donation.name}
-                  </td>
+                  <td>{donation.name}</td>
 
-                  <td>
-                    {donation.email}
-                  </td>
+                  <td>{donation.email}</td>
 
-                  <td>
-                    {donation.campaign}
-                  </td>
+                  <td>{donation.campaign}</td>
 
-                  <td>
-                    ₹{donation.amount}
-                  </td>
+                  <td>₹{donation.amount}</td>
 
                   <td>
                     {new Date(

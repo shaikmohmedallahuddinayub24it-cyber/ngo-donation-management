@@ -48,7 +48,7 @@ function Signup() {
     try {
       // Send signup data to backend
       const response = await fetch(
-        "http://localhost:5000/api/signup",
+        `${import.meta.env.VITE_API_URL}/api/signup`,
         {
           method: "POST",
           headers: {
